@@ -1,264 +1,177 @@
-#!/usr/bin/python3
-"""Module for console class"""
-
+#!/usr/bin/env python3
+"""This the AirBnB console line interpreter"""
 
 import cmd
-import json
-from models.amenity import Amenity
 from models.base_model import BaseModel
+from models.user import User
+from models.state import State
 from models.city import City
+from models.amenity import Amenity
 from models.place import Place
 from models.review import Review
-from models.state import State
-from models.user import User
 from models import storage
 
-
 class HBNBCommand(cmd.Cmd):
-    """command line terminal for HBNB"""
+    """Class containing the entry point of the command interperter"""
+    prompt = "(hbnb) "
 
-    intro = "WELCOME TO HBNB SHELL"
-    prompt = '(hbnb) '
-    MODELS = [Amenity, BaseModel, City, Place, Review, State, User]
+    def do_quit(self, arg):
+        """Command to exit the program."""
+        exit()
 
-    def do_quit(self, line):
-        """command to exit the command line"""
+    def do_EOF(self, arg):
+        """Command to exit the program."""
         return True
 
-    def do_EOF(self, line):
-        """command passes End Of File command
-        to exit the command line"""
-        return True
+    def help_quit(self):
+        print('Quit command to exit the program\n')
 
-    def precmd(self, line):
-        parse_line = line
-        if line:
-            if line[-1] == ")" and "." in line:
-                parse_line = ""
-                line_arr = line.split(".")
-                class_name = line_arr[0]
-                cmd_arr = line_arr[1].split('(')
-                cmd_name = cmd_arr[0]
-                cmd_arg = cmd_arr[1][:-1]
-                cmd_arg_arr = cmd_arg.split(", ")
-                cmd_arg = " ".join(cmd_arg_arr)
-                parse_line = cmd_name + " " + class_name + " " + cmd_arg
-        return super().precmd(parse_line)
+    def help_create(self):
+        """`create` command help"""
+        print('Creates a new instance of BaseModel\n')
+
+    def help_show(self):
+        """`show` command help"""
+        print('Shows a BaseModel instance if exists\n')
 
     def emptyline(self):
-        """command to handle empty line"""
-        return
+        pass
 
-    def check_for_id(self, id_dict, id_instance):
-        """checks list of keys to find an id"""
-        for ind_id in id_dict:
-            if id_instance == ind_id.split(".")[1]:
-                return 1
-        return 0
-
-    def do_create(self, line):
-        """create class instance based on class name
-
-        Usage: create <class> or <class>.create()
-
-        Ex: create BaseModel"""
-
-        if len(line) == 0:
-            print('** class name missing **')
-            return
-        class_name = line.split()[0]
-        for model in self.MODELS:
-            if class_name == model.__name__:
-                model_instance = model()
-                print(model_instance.id)
-                model_instance.save()
-                return
-        print("** class doesn't exist **")
-
-    def do_show(self, line):
-        """Print string representation of a particular
-        instance based on class name and id
-
-        Usage: show <class> <id> or <class>.show(<id>)
-
-        Ex: show BaseModel 1234-1234-1234"""
-        if len(line) == 0:
-            print('** class name missing **')
-            return
-        split_line = line.split()
-        class_name = split_line[0]
-        if len(split_line) > 1:
-            model_id = split_line[1]
+    def do_create(self, arg):
+        """Creates a new instance of BaseModel"""
+        if arg:
+            try:
+                kclass = globals().get(arg, None)
+                obj = kclass()
+                print(obj.id)
+            except:
+                print ("** class doesn't exist **")
         else:
-            print("** instance id missing **")
+            print("** class name missing **")
+
+    def do_show(self, arg):
+        """Shows an instance given its id"""
+        if not arg:
+            print("** class name missing **")
+            return
+        strs = arg.split(" ")
+
+        if not strs:
+            print("** class name missing **")
             return
 
-        for model in self.MODELS:
-            if class_name == model.__name__:
-                storage.reload()
-                files = storage.all()
-                for k in files:
-                    split_key = k.split(".")
-                    if (len(model_id) - len(model_id.strip('\"')) == 2 or
-                            len(model_id) - len(model_id.strip('\"')) == 2):
-                        model_id = model_id.strip('\"\'')
-                    if split_key[0] == class_name and split_key[1] == \
-                            model_id:
-                        model_instance = model(**files[k].to_dict())
-                        print(model_instance)
-                        return
-                print("** no instance found **")
-                return
-        print("** class doesn't exist **")
-
-    def do_destroy(self, line):
-        """Delete instance based on class name and id
-
-        Usage: destroy <class> <id> or <class>.destroy(<id>)
-
-        Ex: destroy BaseModel 1234-1234-1234"""
-        if len(line) == 0:
-            print('** class name missing **')
+        kclass = globals().get(strs[0], None)
+        if kclass is None:
+            print("** class doesn't exist **") 
             return
-        split_line = line.split()
-        class_name = split_line[0]
-        if len(split_line) > 1:
-            model_id = split_line[1]
+
+        if len(strs) != 2:
+           print("** instance id missing **")
+           return
+       
+        if strs[1] in storage.all():
+           print(storage.all()[strs[1]])
         else:
-            print("** instance id missing **")
+            print("** no instance found **")
+
+    def do_destroy(self, arg):
+        """Destroys an instance based on he class name and id"""
+        if not arg:
+            print("** class name missing**")
             return
+        strs = arg.split(" ")
+        count = len(strs)
 
-        for model in self.MODELS:
-            if class_name == model.__name__:
-                storage.reload()
-                files = storage.all()
-                dict_filter = {}
-                if self.check_for_id(files.keys(), model_id):
-                    for k in files.keys():
-                        if model_id not in k:
-                            dict_filter[k] = files[k].to_dict()
-                    with open("file.json", mode='w', encoding='utf-8')\
-                            as json_file:
-                        json.dump(dict_filter, json_file)
-                else:
-                    print("** no instance found **")
-                return
-        print("** class doesn't exist **")
+        if count == 0:
+            print ("** class name missing**")
+            return
+        class_name = strs[0]
 
-    def do_all(self, line):
-        """Print string representation of all
-        instance based or not on class name
-
-        Usage: all <class> | all or <class>.all()
-
-        Ex: all BaseModel or all"""
-        my_list = []
-        storage.reload()
-        files = storage.all()
-        if line:
-            class_name = line.split()[0]
-            for model in self.MODELS:
-                if class_name == model.__name__:
-                    for item in files:
-                        sub_items = files[item].to_dict()
-                        if sub_items["__class__"] == class_name:
-                            sub_instance = model(**sub_items)
-                            my_list.append(str(sub_instance))
-                    print(my_list)
-                    return
+        kclass = globals().get(class_name, None)
+        if kclass is None:
             print("** class doesn't exist **")
-        else:
-            for item in files:
-                sub_items = files[item].to_dict()
-                for model in self.MODELS:
-                    if sub_items["__class__"] == model.__name__:
-                        sub_instance = model(**sub_items)
-                        my_list.append(str(sub_instance))
-            print(my_list)
-
-    def do_update(self, line):
-        """update an instance based on class name and id
-        updating existing attributes or adding new ones
-
-        Usage: update <class> <id> <attribute> <value>
-        or <class>.update(<id>, <attribute>, <value>)
-        attribute and value can also be replaced with a dictionary of
-        attributes and values.
-
-        Ex: update BaseModel 1234-1234-1234 email 'aibnb@mail.com'"""
-        if len(line) == 0:
-            print('** class name missing **')
             return
-        split_line = line.split()
-        class_name = split_line[0]
-        if len(split_line) > 1:
-            model_id = split_line[1]
-        else:
+
+        if count < 2:
             print("** instance id missing **")
             return
+        obj_id = strs[1]
+    
+        if obj_id not in storage.all():
+            print("** no instance found **")
+            return
 
-        for model in self.MODELS:
-            if class_name == model.__name__:
-                # storage.reload()
-                files = storage.all()
-                for k in files:
-                    split_key = k.split(".")
-                    if (len(model_id) - len(model_id.strip('\"')) == 2 or
-                            len(model_id) - len(model_id.strip('\"')) == 2):
-                        model_id = model_id.strip('\"\'')
-                    if split_key[0] == class_name and split_key[1] == model_id:
-                        model_instance = model(**files[k].to_dict())
-                        if len(split_line) > 2:
-                            attr = split_line[2]
-                        else:
-                            print("** attribute name missing **")
-                            return
-                        if len(split_line) > 3:
-                            value = split_line[3]
-                        else:
-                            print("** value missing **")
-                            return
-                        setattr(model_instance, attr, value)
+        obj = storage.all()[obj_id]
+        if obj.__class__.__name__ != class_name:
+            print("** no instance found **")
+            return
 
-                        storage.reload()
-                        files = storage.all()
-                        update = {}
-                        if self.check_for_id(files.keys(), model_id):
-                            for k in files.keys():
-                                if model_instance.id in k:
-                                    update[k] = model_instance.to_dict()
-                                else:
-                                    update[k] = files[k].to_dict()
-                            with open("file.json", mode='w', encoding='utf-8')\
-                                    as json_file:
-                                json.dump(update, json_file)
-                                return
-                print("** no instance found **")
-                return
-        print("** class doesn't exist **")
+        storage.all().pop(obj_id, None)
+        storage.save()
 
-    def do_count(self, line):
-        """Print count of instances of a particular class
+    def do_all(self, arg):
+        """Prints all string representation of all instances"""
+        kclass = globals().get(arg, None)
+        if kclass is None:
+            print("** class doesn't exist **")
+            return
+        for k, v in storage.all().items():
+            if v.__class__.__name__ != arg:
+                continue
+            print(v)
 
-        Usage: <class>.count() or count <class>"""
-        if line:
-            class_name = line.split()[0]
-            for model in self.MODELS:
-                if class_name == model.__name__:
-                    break
-            else:
-                print("** class doesn't exist **")
-                return
+    def do_update(self, arg):
+        """Update an instance base of class name and id"""
+        if not arg:
+            print("** class name missing **")
+            return
+        strs = arg.split(" ")
+        count = len(strs)
+        if not strs:
+            print("** class name missing **")
+            return
+        
+        kclass = globals().get(strs[0], None)
+        if kclass is None:
+            print ("** class doesn't exist **")
+            return
+        class_name = strs[0]
 
-            storage.reload()
-            count = 0
-            files = storage.all()
-            for k in files.keys():
-                if k.split(".")[0] == class_name:
-                    count += 1
-            print(count)
+        if count < 2:
+            print("** instance id missing **")
+            return
+        obj_id = strs[1]
+
+        if  obj_id not in storage.all():
+            print("** no instance found **")
+            return
+
+        obj = storage.all()[obj_id]
+        if obj.__class__.__name__ != class_name:
+            print("** no instance found **")
+            return
+
+        if count < 3:
+            print("** attribute name missing **")
+            return
+        attr_name = strs[2]
+
+        if count < 4:
+            print("** value missing **")
+            return
+        attr_value = strs[3]
+
+        if hasattr(obj, attr_name):
+            setattr(obj, attr_name, type(getattr(obj, attr_name))(attr_value))
         else:
-            print('** class name missing **')
+            setattr(obj, attr_name, attr_value)
+
+        obj.save()
+
+        
+
+
+
 
 
 if __name__ == '__main__':
